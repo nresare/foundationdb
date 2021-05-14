@@ -25,6 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 
 /**
  * Utility for loading a dynamic library from the classpath.
@@ -34,7 +35,6 @@ class JNIUtil {
 	private static final String SEPARATOR = "/";
 	private static final String LOADABLE_PREFIX = "FDB_LIBRARY_PATH_";
 	private static final String TEMPFILE_PREFIX = "fdbjni";
-	private static final String TEMPFILE_SUFFIX = ".library";
 
 	private static class OS {
 		private final String name;
@@ -135,17 +135,24 @@ class JNIUtil {
 		InputStream resource = JNIUtil.class.getResourceAsStream(path);
 		if(resource == null)
 			throw new IllegalStateException("Embedded library jar:" + path + " not found");
-		File f = saveStreamAsTempFile(resource);
+		File f = saveStreamAsTempFile(resource, path);
 		return f;
 	}
 
-	private static File saveStreamAsTempFile(InputStream resource) throws IOException {
-		File f = File.createTempFile(TEMPFILE_PREFIX, TEMPFILE_SUFFIX);
+	private static String extractFilename(String path) {
+		String[] parts = path.split("/");
+		return parts[parts.length - 1];
+	}
+
+	private static File saveStreamAsTempFile(InputStream resource, String path) throws IOException {
+		File tempDir = Files.createTempDirectory(TEMPFILE_PREFIX).toFile();
+		File f = new File(tempDir, extractFilename(path));
 		FileOutputStream outputStream = new FileOutputStream(f);
 		copyStream(resource, outputStream);
 		outputStream.flush();
 		outputStream.close();
 		f.deleteOnExit();
+		tempDir.deleteOnExit();
 		return f;
 	}
 
